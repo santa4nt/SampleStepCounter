@@ -21,6 +21,7 @@ public class MainActivity extends ActionBarActivity {
     // UI elements
     private TextView mTextSteps;
     private Button mResetButton;
+    private Button mRefreshButton;
 
     private StepsReceiver mStepsReceiver;
     private boolean mActivityRunning;
@@ -33,16 +34,25 @@ public class MainActivity extends ActionBarActivity {
         // find references to UI elements
         mTextSteps = (TextView) findViewById(R.id.textSteps);
         mResetButton = (Button) findViewById(R.id.reset_button);
+        mRefreshButton = (Button) findViewById(R.id.refresh_button);
 
         // initialization of UI elements
         mTextSteps.setText("0");
-
         mResetButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 // tell the service to tell the step counter sensor wrapper to reset itself
                 Intent serviceResetIntent = new Intent(MainActivity.this, StepCounterService.class);
                 serviceResetIntent.setAction(Constants.ACTION_RESET);
+                startService(serviceResetIntent);
+            }
+        });
+        mRefreshButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // tell the service to tell the step counter sensor wrapper to flush its batched events
+                Intent serviceResetIntent = new Intent(MainActivity.this, StepCounterService.class);
+                serviceResetIntent.setAction(Constants.ACTION_FLUSH);
                 startService(serviceResetIntent);
             }
         });
