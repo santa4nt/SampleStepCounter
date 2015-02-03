@@ -3,6 +3,7 @@ package com.swijaya.samplestepcounter;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -15,8 +16,10 @@ public class MainActivity extends ActionBarActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
+    // UI elements
     private TextView mTextSteps;
 
+    private StepsReceiver mStepsReceiver;
     private boolean mActivityRunning;
 
     @Override
@@ -34,7 +37,10 @@ public class MainActivity extends ActionBarActivity {
     @Override
     protected void onStart() {
         // register a broadcast receiver to handle update events from the service
-        // TODO
+        mStepsReceiver = this.new StepsReceiver();
+        IntentFilter broadcastIntentFilter = new IntentFilter();
+        broadcastIntentFilter.addAction(Constants.ACTION_STEPS_SINCE_REBOOT);
+        registerReceiver(mStepsReceiver, broadcastIntentFilter);
 
         super.onStart();
     }
@@ -54,7 +60,8 @@ public class MainActivity extends ActionBarActivity {
     @Override
     protected void onStop() {
         // unregister the broadcast receiver
-        // TODO
+        unregisterReceiver(mStepsReceiver);
+        mStepsReceiver = null;
 
         super.onStop();
     }
