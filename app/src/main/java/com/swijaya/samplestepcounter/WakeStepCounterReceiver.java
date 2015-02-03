@@ -15,6 +15,16 @@ public class WakeStepCounterReceiver extends WakefulBroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         Intent wakeServiceIntent = new Intent(context, StepCounterService.class);
+
+        String action = intent.getAction();
+        if (action.equals(Constants.ACTION_STEPS_SINCE_REBOOT)) {
+            Log.d(TAG, "Dispatched on reboot.");
+        }
+        else if (action.equals(Constants.ACTION_FLUSH)) {
+            Log.d(TAG, "Dispatched by alarm manager for sensor flush.");
+            wakeServiceIntent.setAction(action);
+        }
+
         Log.d(TAG, "Starting wakeful service for StepCounterService.");
         startWakefulService(context, wakeServiceIntent);
     }

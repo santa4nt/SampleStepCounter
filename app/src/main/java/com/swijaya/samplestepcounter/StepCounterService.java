@@ -1,5 +1,7 @@
 package com.swijaya.samplestepcounter;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -7,6 +9,7 @@ import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
+import android.hardware.SensorEventListener2;
 import android.hardware.SensorManager;
 import android.os.IBinder;
 import android.util.Log;
@@ -19,6 +22,7 @@ public class StepCounterService extends Service {
     private SensorManager mSensorManager;
     private Sensor mStepCounter;
     private SensorEventListener mStepCounterListener;
+    private PendingIntent mWakeupIntent;
 
     private int mStepsSinceReboot;
 
@@ -49,6 +53,10 @@ public class StepCounterService extends Service {
             // TODO
         }
 
+        assert (mSensorManager != null);
+        assert (mStepCounter != null);
+        assert (mStepCounterListener != null);
+
         if (intent != null) {
             // we might have been started by a wakeful receiver; if so, release its wake lock
             if (WakeStepCounterReceiver.completeWakefulIntent(intent)) {
@@ -56,6 +64,14 @@ public class StepCounterService extends Service {
             }
             else {
                 Log.d(TAG, "Was not started by a wakeful receiver.");
+            }
+
+            String action = intent.getAction();
+            if (action != null) {
+                if (action.equals(Constants.ACTION_FLUSH)) {
+                    Log.i(TAG, "Flushing step counter sensor data.");
+                    mSensorManager.flush(mStepCounterListener);
+                }
             }
         }
 
@@ -82,19 +98,29 @@ public class StepCounterService extends Service {
         // initialize a sensor event listener
         mStepCounterListener = this.new StepCounterListener();
 
-        // approximate the maximum report latency, enough to take advantage of the hardware FIFO queue
-        // but not so much that old events get lost
-        int maxEvents = mStepCounter.getFifoMaxEventCount();
-        int maxReportLatency = (maxEvents / Constants.SENSOR_DELAY) / 4 * 3;
-
         // register a listener for the step counter sensor
         if (!mSensorManager.registerListener(mStepCounterListener, mStepCounter,
-                Constants.SENSOR_DELAY, maxReportLatency)) {
+                Constants.SENSOR_DELAY, Constants.MAX_REPORT_LATENCY)) {
             Toast toast = Toast.makeText(this, R.string.toast_err_step_counter_listener, Toast.LENGTH_SHORT);
             toast.show();
             mStepCounterListener = null;
             return false;
         }
+
+        // approximate the maximum report latency, enough to take advantage of the hardware FIFO queue
+        // but not so much that old events get lost
+        int maxEvents = (int)(0.9 * mStepCounter.getFifoMaxEventCount());       // to be conservative, take 90% of the reported max FIFO event count
+        // then estimate the time delta between which wake up the system to flush sensor data
+        long wakeupDelay = (maxEvents / 10) * 1000;   // in milliseconds
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, WakeStepCounterReceiver.class);
+        intent.setAction(Constants.ACTION_FLUSH);
+        mWakeupIntent = PendingIntent.getBroadcast(this, 0, intent, 0);
+        Log.d(TAG, "Setting a repeating alarm with delay hint of " + wakeupDelay + " milliseconds.");
+        alarmManager.setInexactRepeating(AlarmManager.RTC_WAKEUP,
+                System.currentTimeMillis() + wakeupDelay,
+                wakeupDelay,
+                mWakeupIntent);
 
         // all system go!
         return true;
@@ -107,15 +133,23 @@ public class StepCounterService extends Service {
             mStepCounterListener = null;
             mStepCounter = null;
         }
+
+        if (mWakeupIntent != null) {
+            AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            alarmManager.cancel(mWakeupIntent);
+            mWakeupIntent = null;
+        }
     }
 
-    public class StepCounterListener implements SensorEventListener {
+    public class StepCounterListener implements SensorEventListener, SensorEventListener2 {
+
         @Override
         public void onSensorChanged(SensorEvent event) {
             long timestamp = event.timestamp;
             mStepsSinceReboot = (int) event.values[0];
 
             if (timestamp == 0 || mStepsSinceReboot == 0) {
+                // ignore the activation event
                 return;
             }
 
@@ -127,6 +161,11 @@ public class StepCounterService extends Service {
         @Override
         public void onAccuracyChanged(Sensor sensor, int accuracy) {
             // pass?
+        }
+
+        @Override
+        public void onFlushCompleted(Sensor sensor) {
+            Log.d(TAG, "Explicit flush request completed.");
         }
 
     }
