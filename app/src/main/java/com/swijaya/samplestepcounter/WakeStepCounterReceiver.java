@@ -17,7 +17,7 @@ public class WakeStepCounterReceiver extends WakefulBroadcastReceiver {
         Intent wakeServiceIntent = new Intent(context, StepCounterService.class);
 
         String action = intent.getAction();
-        if (action.equals(Constants.ACTION_STEPS_SINCE_REBOOT)) {
+        if (action.equals(Constants.ACTION_START_SERVICE_ON_REBOOT)) {
             Log.d(TAG, "Dispatched on reboot.");
         }
         else if (action.equals(Constants.ACTION_FLUSH)) {

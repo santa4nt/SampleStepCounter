@@ -20,4 +20,13 @@
         android:layout_centerHorizontal="true"
         android:layout_marginTop="47dp" />
 
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/text_reset"
+        android:id="@+id/reset_button"
+        android:layout_above="@+id/textView"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="60dp" />
+
 </RelativeLayout>

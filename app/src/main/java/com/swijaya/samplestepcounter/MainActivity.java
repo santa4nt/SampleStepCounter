@@ -9,6 +9,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 
@@ -18,6 +20,7 @@ public class MainActivity extends ActionBarActivity {
 
     // UI elements
     private TextView mTextSteps;
+    private Button mResetButton;
 
     private StepsReceiver mStepsReceiver;
     private boolean mActivityRunning;
@@ -27,7 +30,22 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // find references to UI elements
         mTextSteps = (TextView) findViewById(R.id.textSteps);
+        mResetButton = (Button) findViewById(R.id.reset_button);
+
+        // initialization of UI elements
+        mTextSteps.setText("0");
+
+        mResetButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // tell the service to tell the step counter sensor wrapper to reset itself
+                Intent serviceResetIntent = new Intent(MainActivity.this, StepCounterService.class);
+                serviceResetIntent.setAction(Constants.ACTION_RESET);
+                startService(serviceResetIntent);
+            }
+        });
     }
 
     @Override
@@ -35,7 +53,7 @@ public class MainActivity extends ActionBarActivity {
         // register a broadcast receiver to handle update events from the service
         mStepsReceiver = this.new StepsReceiver();
         IntentFilter broadcastIntentFilter = new IntentFilter();
-        broadcastIntentFilter.addAction(Constants.ACTION_STEPS_SINCE_REBOOT);
+        broadcastIntentFilter.addAction(Constants.ACTION_STEP_EVENT_RECEIVED);
         registerReceiver(mStepsReceiver, broadcastIntentFilter);
 
         super.onStart();
@@ -89,10 +107,11 @@ public class MainActivity extends ActionBarActivity {
 
         @Override
         public void onReceive(Context context, Intent intent) {
-            int stepsSinceReboot = intent.getIntExtra(Constants.EXTRA_STEPS, 0);
-            Log.d(TAG, "Received a broadcast intent with step count: " + stepsSinceReboot);
+            StepCounterSensor.StepEvent lastSeenStepEvent =
+                    intent.getParcelableExtra(Constants.EXTRA_STEP_EVENT);
+            Log.d(TAG, "Received a broadcast intent with relative step count: " + lastSeenStepEvent.steps);
             if (mActivityRunning) {
-                mTextSteps.setText(String.valueOf(stepsSinceReboot));
+                mTextSteps.setText(String.valueOf(lastSeenStepEvent.steps));
             }
         }
 
