@@ -9,7 +9,7 @@
 
     <string name="action_settings">Settings</string>
 
-    <string name="text_steps_since_reboot">Steps since reboot:</string>
+    <string name="text_steps_since_reboot">Steps since reset:</string>
     <string name="text_reset">Reset</string>
     <string name="text_refresh">Refresh</string>
 

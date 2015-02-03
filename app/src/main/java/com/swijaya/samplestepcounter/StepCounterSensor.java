@@ -11,8 +11,15 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Log;
 
+/**
+ * A wrapper class around the Step Count Sensor.
+ */
 public class StepCounterSensor {
 
+    /**
+     * A custom exception that can be configured with a String resource ID
+     * (so that its catcher can use it to pass into a Toast, for instance).
+     */
     public static class StepCounterSensorException extends Exception {
         public int resId;
         public StepCounterSensorException(int resId) {
@@ -20,6 +27,11 @@ public class StepCounterSensor {
         }
     }
 
+    /**
+     * A parcelable object that wraps sensor event data given to us by
+     * the Step Count API (namely, timestamp and step count). This wrapper
+     * is used mainly to be able to be passed into intents as extra.
+     */
     public static class StepEvent implements Parcelable {
         public long timestamp;
         public int steps;
@@ -58,7 +70,18 @@ public class StepCounterSensor {
         };
     }
 
+    /**
+     * Consumer of this wrapper will be notified of sanitized sensor events (re-wrapped into
+     * a StepEvent wrapper object) via this callback interface.
+     */
     public interface StepCountListener {
+        /**
+         * The callback through which owner of this sensor wrapper can be notified with sanitized
+         * step count event data that is relative(!) to the last tiem this wrapper was initialized.
+         *
+         * @param stepEvent a sanitized sensor event data representing relative step count since
+         *                  the last time the wrapper StepCounterSensor object was reset or initialized
+         */
         public void onStepCountEvent(StepEvent stepEvent);
     }
 
@@ -78,6 +101,18 @@ public class StepCounterSensor {
     private StepEvent mLastSeenStepEvent;           // relative to the first time the sensor was activated
     private StepEvent mLastSeenRelativeStepEvent;   // the vector difference between the former two
 
+    /**
+     * This Step Count Sensor wrapper needs to be configured with two main values:
+     * sensor delay and maximum report latency (both in microseconds). These are passed to--
+     * and have the same meaning as--their respective parameters in
+     * {@link SensorManager#registerListener(android.hardware.SensorEventListener, android.hardware.Sensor, int, int)}.
+     *
+     * @param context the context that owns this wrapper (e.g. a Service)
+     * @param sensorDelayU the desired sensor delay in microseconds
+     * @param maxReportLatencyU the desired maximum report latency in microseconds
+     * @param uiListener (optional) callback object that will be passed sanitized sensor (step count)
+     *                   event data when this wrapper itself is notified by its wrapped sensor
+     */
     public StepCounterSensor(Context context,
                              int sensorDelayU, int maxReportLatencyU,
                              StepCountListener uiListener) {
@@ -88,10 +123,15 @@ public class StepCounterSensor {
         mSensorDelay = sensorDelayU;
         mMaxReportLatency = maxReportLatencyU;
         mUiListener = uiListener;
-
-        mLastSeenRelativeStepEvent = new StepEvent(0, 0);
     }
 
+    /**
+     * Initialize this wrapper by initializing the sensor objects and resources internally.
+     *
+     * @throws StepCounterSensorException if critical sensor resources cannot be obtained; use
+     *      StepCounterSensorException#resId as String resource ID pointing to a human-readable
+     *      error message
+     */
     public void initialize() throws StepCounterSensorException {
         Log.i(TAG, "Initializing step counter sensor.");
 
@@ -114,6 +154,9 @@ public class StepCounterSensor {
             throw new StepCounterSensorException(R.string.toast_err_step_counter_listener);
         }
 
+        mAnchorStepEvent = mLastSeenStepEvent = null;
+        mLastSeenRelativeStepEvent = new StepEvent(0, 0);
+
         // all system go!
         mInitialized = true;
     }
@@ -122,10 +165,19 @@ public class StepCounterSensor {
         return mInitialized;
     }
 
+    /**
+     * Poll this wrapper to get the step count event data it last saw, relative to the first
+     * time this wrapper was initialized or the last time this wrapper was reset.
+     *
+     * @return relative step count event data
+     */
     public StepEvent getLastSeenRelativeStepEvent() {
         return mLastSeenRelativeStepEvent;
     }
 
+    /**
+     * Flush the internal step count sensor's FIFO queue
+     */
     public void flush() {
         mSensorManager.flush(mStepCounterListener);
     }
