@@ -59,6 +59,10 @@ public class StepCounterService extends Service {
             }
         }
 
+        // regardless of how we got started, send a broadcast intent containing the
+        // steps count we have so far
+        broadcastSteps(mStepsSinceReboot);
+
         return START_STICKY;
     }
 
@@ -110,6 +114,11 @@ public class StepCounterService extends Service {
         public void onSensorChanged(SensorEvent event) {
             long timestamp = event.timestamp;
             mStepsSinceReboot = (int) event.values[0];
+
+            if (timestamp == 0 || mStepsSinceReboot == 0) {
+                return;
+            }
+
             Log.d(TAG, "Timestamp: " + timestamp + "; steps: " + mStepsSinceReboot);
 
             broadcastSteps(mStepsSinceReboot);
@@ -120,12 +129,13 @@ public class StepCounterService extends Service {
             // pass?
         }
 
-        private void broadcastSteps(int stepsSinceReboot) {
-            Intent broadcastIntent = new Intent();
-            broadcastIntent.setAction(Constants.ACTION_STEPS_SINCE_REBOOT);
-            broadcastIntent.putExtra(Constants.EXTRA_STEPS, stepsSinceReboot);
-            sendBroadcast(broadcastIntent);
-        }
+    }
+
+    private void broadcastSteps(int stepsSinceReboot) {
+        Intent broadcastIntent = new Intent();
+        broadcastIntent.setAction(Constants.ACTION_STEPS_SINCE_REBOOT);
+        broadcastIntent.putExtra(Constants.EXTRA_STEPS, stepsSinceReboot);
+        sendBroadcast(broadcastIntent);
     }
 
 }

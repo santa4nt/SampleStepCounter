@@ -28,10 +28,6 @@ public class MainActivity extends ActionBarActivity {
         setContentView(R.layout.activity_main);
 
         mTextSteps = (TextView) findViewById(R.id.textSteps);
-
-        // start the semi-persistent background service that interfaces with the step counter sensor API
-        Intent serviceIntent = new Intent(this, StepCounterService.class);
-        startService(serviceIntent);
     }
 
     @Override
@@ -49,6 +45,12 @@ public class MainActivity extends ActionBarActivity {
     protected void onResume() {
         super.onResume();
         mActivityRunning = true;
+
+        // start the semi-persistent background service that interfaces with the step counter sensor API
+        // this can be the first time we start this service, or (statistically) not; either way,
+        // the service's onStartIntent() callback will send us data back via a broadcast intent
+        Intent serviceIntent = new Intent(this, StepCounterService.class);
+        startService(serviceIntent);
     }
 
     @Override
@@ -75,17 +77,12 @@ public class MainActivity extends ActionBarActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+        switch (item.getItemId()) {
+            case R.id.action_settings:
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
         }
-
-        return super.onOptionsItemSelected(item);
     }
 
     public class StepsReceiver extends BroadcastReceiver {
@@ -93,7 +90,7 @@ public class MainActivity extends ActionBarActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             int stepsSinceReboot = intent.getIntExtra(Constants.EXTRA_STEPS, 0);
-            Log.d(TAG, "Steps since reboot: " + stepsSinceReboot);
+            Log.d(TAG, "Received a broadcast intent with step count: " + stepsSinceReboot);
             if (mActivityRunning) {
                 mTextSteps.setText(String.valueOf(stepsSinceReboot));
             }
