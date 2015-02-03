@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">SampleStepCounter</string>
+    <string name="hello_world">Hello world!</string>
+
+    <string name="toast_no_step_counter">The step counter sensor is not supported on this device.</string>
+    <string name="toast_err_step_counter_listener">There was an error in subscribing to step counter sensor events.</string>
+
+    <string name="action_settings">Settings</string>
+
+    <string name="text_steps_since_reboot">Steps since reboot:</string>
+
+</resources>
