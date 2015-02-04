@@ -100,6 +100,15 @@ public class StepCounterSensor {
     private StepEvent mAnchorStepEvent;             // relative to the first time the sensor was activated
     private StepEvent mLastSeenStepEvent;           // relative to the first time the sensor was activated
     private StepEvent mLastSeenRelativeStepEvent;   // the vector difference between the former two
+    private StepEvent mOffset;                      // added to the latter
+
+    /**
+     */
+    public StepCounterSensor(Context context,
+                             int sensorDelayU, int maxReportLatencyU,
+                             StepCountListener uiListener) {
+        this(context, sensorDelayU, maxReportLatencyU, uiListener, 0, 0);
+    }
 
     /**
      * This Step Count Sensor wrapper needs to be configured with two main values:
@@ -112,10 +121,13 @@ public class StepCounterSensor {
      * @param maxReportLatencyU the desired maximum report latency in microseconds
      * @param uiListener (optional) callback object that will be passed sanitized sensor (step count)
      *                   event data when this wrapper itself is notified by its wrapped sensor
+     * @param timestampOffset this offset value is added to all returned relative StepEvent value
+     * @param stepcountOffset this offset value is added to all returned relative StepEvent value
      */
     public StepCounterSensor(Context context,
                              int sensorDelayU, int maxReportLatencyU,
-                             StepCountListener uiListener) {
+                             StepCountListener uiListener,
+                             long timestampOffset, int stepcountOffset) {
         assert (context != null);
         assert (uiListener != null);
 
@@ -123,6 +135,10 @@ public class StepCounterSensor {
         mSensorDelay = sensorDelayU;
         mMaxReportLatency = maxReportLatencyU;
         mUiListener = uiListener;
+
+        mAnchorStepEvent = mLastSeenStepEvent = null;
+        mLastSeenRelativeStepEvent = new StepEvent(0, 0);
+        mOffset = new StepEvent(timestampOffset, stepcountOffset);
     }
 
     /**
@@ -172,7 +188,10 @@ public class StepCounterSensor {
      * @return relative step count event data
      */
     public StepEvent getLastSeenRelativeStepEvent() {
-        return mLastSeenRelativeStepEvent;
+        return new StepEvent(
+                mLastSeenRelativeStepEvent.timestamp + mOffset.timestamp,
+                mLastSeenRelativeStepEvent.steps + mOffset.steps
+        );
     }
 
     /**
@@ -197,6 +216,7 @@ public class StepCounterSensor {
         }
         mAnchorStepEvent = mLastSeenStepEvent;
         mLastSeenRelativeStepEvent = new StepEvent(0, 0);
+        mOffset = new StepEvent(0, 0);
     }
 
     public void deinitialize() {
@@ -241,7 +261,10 @@ public class StepCounterSensor {
 
             // fire a step count event with this event data relative to the first time we "anchored"
             if (mUiListener != null) {
-                mUiListener.onStepCountEvent(mLastSeenRelativeStepEvent);
+                mUiListener.onStepCountEvent(new StepEvent(
+                        mLastSeenRelativeStepEvent.timestamp + mOffset.timestamp,
+                        mLastSeenRelativeStepEvent.steps + mOffset.steps
+                ));
             }
         }
 

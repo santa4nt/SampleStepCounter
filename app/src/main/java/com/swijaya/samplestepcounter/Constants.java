@@ -15,4 +15,8 @@ public class Constants {
     public static final int SENSOR_DELAY = SensorManager.SENSOR_DELAY_NORMAL;
     public static final int MAX_REPORT_LATENCY = 10 * 1000000;  // 10 seconds
 
+    public static final String PREF_OFFSET = "pref.offset";
+    public static final String PREF_OFFSET_TIMESTAMP = "pref.offset.timestamp";
+    public static final String PREF_OFFSET_STEPCOUNT = "pref.offset.stepcount";
+
 }

@@ -5,6 +5,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
@@ -12,6 +13,8 @@ import android.widget.Toast;
 public class StepCounterService extends Service {
 
     private static final String TAG = StepCounterService.class.getSimpleName();
+
+    private SharedPreferences mPrefs;
 
     private StepCounterSensor mStepCounter;
     private StepCounterSensor.StepCountListener mStepCounterListener;
@@ -27,10 +30,13 @@ public class StepCounterService extends Service {
 
     @Override
     public void onCreate() {
+        StepCounterSensor.StepEvent offset = loadPrefOffset();
+
         mStepCounterListener = this.new StepEventListener();
         mStepCounter = new StepCounterSensor(this,
                 Constants.SENSOR_DELAY, Constants.MAX_REPORT_LATENCY,
-                mStepCounterListener);
+                mStepCounterListener,
+                offset.timestamp, offset.steps);
     }
 
     private int showErrorToastAndStopSelf(int resId) {
@@ -88,10 +94,14 @@ public class StepCounterService extends Service {
                 if (action.equals(Constants.ACTION_FLUSH)) {
                     Log.i(TAG, "Flushing step counter sensor data.");
                     mStepCounter.flush();
+                    // take this opportunity to persist the last seen (relative) step count data as offset
+                    savePrefOffset();
                 }
                 else if (action.equals(Constants.ACTION_RESET)) {
                     Log.i(TAG, "Resetting step counter relative anchor.");
                     mStepCounter.reset();
+                    // we need to persist the now (0, 0) step count data as offset
+                    savePrefOffset();
                 }
             }
         }
@@ -114,6 +124,11 @@ public class StepCounterService extends Service {
 
     @Override
     public void onDestroy() {
+        // this is not guaranteed to be called!
+        serviceCleanup();
+    }
+
+    private void serviceCleanup() {
         if (mStepCounter != null) {
             mStepCounter.deinitialize();
         }
@@ -123,7 +138,36 @@ public class StepCounterService extends Service {
             alarmManager.cancel(mWakeupIntent);
             mWakeupIntent = null;
         }
+
+        // persist the current relative step count data for future offset calculation
+        savePrefOffset();
     }
+
+    private StepCounterSensor.StepEvent loadPrefOffset() {
+        if (mPrefs == null) {
+            mPrefs = getSharedPreferences(Constants.PREF_OFFSET, 0);
+        }
+
+        long timestampOffset = mPrefs.getLong(Constants.PREF_OFFSET_TIMESTAMP, 0);
+        int stepcountOffset = mPrefs.getInt(Constants.PREF_OFFSET_STEPCOUNT, 0);
+        Log.i(TAG, "Loaded offset timestamp: " + timestampOffset + " step count: " + stepcountOffset);
+        return new StepCounterSensor.StepEvent(timestampOffset, stepcountOffset);
+    }
+
+    private void savePrefOffset() {
+        if (mPrefs == null) {
+            mPrefs = getSharedPreferences(Constants.PREF_OFFSET, 0);
+        }
+
+        StepCounterSensor.StepEvent lastSeenRelativeStepEvent = mStepCounter.getLastSeenRelativeStepEvent();
+        Log.i(TAG, "Persisting for future offset timestamp: " + lastSeenRelativeStepEvent.timestamp + " step count: " + lastSeenRelativeStepEvent.steps);
+
+        SharedPreferences.Editor editor = mPrefs.edit();
+        editor.putLong(Constants.PREF_OFFSET_TIMESTAMP, lastSeenRelativeStepEvent.timestamp);
+        editor.putInt(Constants.PREF_OFFSET_STEPCOUNT, lastSeenRelativeStepEvent.steps);
+        editor.commit();
+    }
+
 
     private class StepEventListener implements StepCounterSensor.StepCountListener {
         @Override

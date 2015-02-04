@@ -49,7 +49,7 @@ public class MainActivity extends ActionBarActivity {
         });
         mRefreshButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
+            public void onClick(View view) {
                 // tell the service to tell the step counter sensor wrapper to flush its batched events
                 Intent serviceResetIntent = new Intent(MainActivity.this, StepCounterService.class);
                 serviceResetIntent.setAction(Constants.ACTION_FLUSH);
